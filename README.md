@@ -1,1 +1,2 @@
-README.md
+# Phone ↔ PC Sync Emulator
+Initial commit - project setup
