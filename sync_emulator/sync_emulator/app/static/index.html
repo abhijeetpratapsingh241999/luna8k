@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sync Emulator</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      .row { display: flex; gap: 1rem; align-items: center; }
+      #log { white-space: pre-wrap; background: #111; color: #eee; padding: 1rem; border-radius: 8px; height: 300px; overflow: auto; }
+      button { padding: 0.5rem 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Phone–PC Sync Emulator</h1>
+    <div class="row">
+      <button id="connect">Connect WebSocket</button>
+      <button id="send">Send Test Message</button>
+    </div>
+    <h3>Events</h3>
+    <div id="log"></div>
+    <h3>Data</h3>
+    <div class="row">
+      <button id="refresh">Refresh Devices</button>
+      <select id="deviceSelect"></select>
+      <button id="loadData">Load Device Data</button>
+    </div>
+    <div class="row">
+      <div style="flex:1">
+        <h4>Contacts</h4>
+        <pre id="contacts"></pre>
+      </div>
+      <div style="flex:1">
+        <h4>Messages</h4>
+        <pre id="messages"></pre>
+      </div>
+      <div style="flex:1">
+        <h4>Files</h4>
+        <pre id="files"></pre>
+      </div>
+    </div>
+    <script>
+      let ws;
+      const log = (msg) => {
+        const el = document.getElementById('log');
+        el.textContent += `\n${new Date().toISOString()}  ${msg}`;
+        el.scrollTop = el.scrollHeight;
+      };
+      document.getElementById('connect').onclick = () => {
+        if (ws && ws.readyState === WebSocket.OPEN) { log('Already connected'); return; }
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        ws = new WebSocket(`${proto}://${location.host}/ws`);
+        ws.onopen = () => log('WebSocket open');
+        ws.onmessage = (evt) => log(`recv: ${evt.data}`);
+        ws.onclose = () => log('WebSocket closed');
+        ws.onerror = (e) => log('WebSocket error');
+      };
+      document.getElementById('send').onclick = () => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
+        ws.send(JSON.stringify({ type: 'ping', time: Date.now() }));
+      };
+      async function fetchJson(path) {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+      }
+      async function refreshDevices() {
+        const devices = await fetchJson('/query/devices');
+        const sel = document.getElementById('deviceSelect');
+        sel.innerHTML = '';
+        for (const d of devices) {
+          const opt = document.createElement('option');
+          opt.value = d.device_id;
+          opt.textContent = `${d.id} - ${d.name} (${d.device_id})`;
+          sel.appendChild(opt);
+        }
+        log(`Loaded ${devices.length} devices`);
+      }
+      async function loadDeviceData() {
+        const sel = document.getElementById('deviceSelect');
+        const did = sel.value;
+        if (!did) { log('No device selected'); return; }
+        const [contacts, messages, files] = await Promise.all([
+          fetchJson(`/query/${did}/contacts`),
+          fetchJson(`/query/${did}/messages`),
+          fetchJson(`/query/${did}/files`),
+        ]);
+        document.getElementById('contacts').textContent = JSON.stringify(contacts, null, 2);
+        document.getElementById('messages').textContent = JSON.stringify(messages, null, 2);
+        document.getElementById('files').textContent = JSON.stringify(files, null, 2);
+        log('Loaded data');
+      }
+      document.getElementById('refresh').onclick = () => { refreshDevices().catch(e => log('err: '+e.message)); };
+      document.getElementById('loadData').onclick = () => { loadDeviceData().catch(e => log('err: '+e.message)); };
+      refreshDevices().catch(() => {});
+    </script>
+  </body>
+  </html>
+
