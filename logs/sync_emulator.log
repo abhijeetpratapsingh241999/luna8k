@@ -1,0 +1,4 @@
+2025-08-25 11:15:28,462 - PhonePCSyncEmulator - INFO - main:25 - Starting Phone-PC Sync Emulator
+2025-08-25 11:15:28,538 - PhonePCSyncEmulator - ERROR - main:53 - Failed to start application: 'DevicePanel' object has no attribute '_update_display'
+2025-08-25 11:16:09,661 - PhonePCSyncEmulator - INFO - demo_sync_process:21 - Starting demo
+2025-08-25 11:16:15,676 - PhonePCSyncEmulator - INFO - demo_sync_process:93 - Demo completed successfully
